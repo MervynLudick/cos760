@@ -1,0 +1,8 @@
+datasets
+torch
+transformers
+huggingface_hub
+evaluate
+openai
+soundfile
+
