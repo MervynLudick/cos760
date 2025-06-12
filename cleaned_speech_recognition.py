@@ -110,14 +110,16 @@ def transcribe_with_openai_api(dataset):
         with tempfile.NamedTemporaryFile(suffix=".wav") as temp_file:
             sf.write(temp_file.name, audio_array, samplerate=sample_rate)
             temp_file.flush()
-            
+
             with open(temp_file.name, "rb") as f:
                 response = openai.audio.transcriptions.create(
-                    model="gpt-4o-transcribe", file=f, 
-                    response_format="text", language=LANGUAGE
+                    model="gpt-4o-transcribe",
+                    file=f,
+                    response_format="text",
+                    language=LANGUAGE,
                 )
-        
-        transcription = response.strip()
+
+        transcription = response.text.strip()
         predictions.append(transcription)
         references.append(sample["sentence"])
         print(f"Actual: {sample['sentence']}")
