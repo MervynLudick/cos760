@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 """Speech Recognition Comparison: Whisper vs SeamlessM4T-v2 vs OpenAI API"""
 
+"""Compare different ASR models on Afrikaans audio samples."""
+
 from datasets import load_dataset, Audio
 import torch
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline, SeamlessM4Tv2ForSpeechToText
+from transformers import (
+    AutoModelForSpeechSeq2Seq,
+    AutoProcessor,
+    SeamlessM4Tv2ForSpeechToText,
+    pipeline,
+)
 from huggingface_hub import login
 import evaluate
 import openai
@@ -16,6 +23,7 @@ DATASET_NAME = "mozilla-foundation/common_voice_17_0"
 LANGUAGE = "af"
 WHISPER_MODELS = ["openai/whisper-large-v3", "openai/whisper-small"]
 SEAMLESS_MODEL = "facebook/seamless-m4t-v2-large"
+NUM_SAMPLES = 10  # limit dataset for quick comparisons
 
 def setup_device_and_dtype():
     """Setup device and data type for models."""
@@ -25,9 +33,11 @@ def setup_device_and_dtype():
 
 def load_dataset_with_audio():
     """Load and prepare the Common Voice dataset."""
-    cv_17 = load_dataset(DATASET_NAME, LANGUAGE, split="train")
-    cv_17 = cv_17.cast_column("audio", Audio(sampling_rate=16000))
-    return cv_17
+    dataset = load_dataset(DATASET_NAME, LANGUAGE, split="train")
+    dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
+    if NUM_SAMPLES:
+        dataset = dataset.shuffle(seed=42).select(range(NUM_SAMPLES))
+    return dataset
 
 def evaluate_model_predictions(predictions, references, model_name):
     """Evaluate and print WER results for a model."""
@@ -99,7 +109,9 @@ def transcribe_with_openai_api(dataset):
     """Transcribe audio using OpenAI API."""
     print("\nTesting OpenAI API...")
     
-    api_key = os.getenv("OPENAI_API_KEY", "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")
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY environment variable is not set")
     openai.api_key = api_key
     
     predictions, references = [], []
@@ -129,8 +141,9 @@ def main():
     """Main execution function."""
     print("=== Speech Recognition Model Comparison ===")
     
-    # Hugging Face authentication
-    login()
+    # Hugging Face authentication (use env var if available)
+    token = os.getenv("HF_TOKEN")
+    login(token=token) if token else login()
     
     # Setup
     device, torch_dtype = setup_device_and_dtype()
